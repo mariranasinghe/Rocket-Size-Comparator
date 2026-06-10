@@ -22,11 +22,19 @@ export interface RocketData {
   color: string;
   desc: string;
   boosters: boolean;
+  launches: number;
+  costPerKg: number;
+  engines: number;
+  reusable: boolean;
+  missions: string[];
+  funFact: string;
 }
 
 interface Props {
   rockets: RocketData[];
   width: number;
+  highlightedId?: string | null;
+  onRocketPress?: (id: string) => void;
 }
 
 function darken(hex: string, amt = 0.25): string {
@@ -36,12 +44,7 @@ function darken(hex: string, amt = 0.25): string {
   return `rgb(${Math.round(r * (1 - amt))},${Math.round(g * (1 - amt))},${Math.round(b * (1 - amt))})`;
 }
 
-function buildBodyPath(
-  cx: number,
-  groundY: number,
-  hPx: number,
-  wPx: number
-): string {
+function buildBodyPath(cx: number, groundY: number, hPx: number, wPx: number): string {
   const hw = wPx / 2;
   const noseH = hPx * 0.14;
   const engineH = hPx * 0.1;
@@ -112,20 +115,8 @@ function RocketShape({ cx, groundY, rH, baseW, color, addDetail }: ShapeProps) {
           />
         </G>
       )}
-      <Ellipse
-        cx={cx}
-        cy={groundY}
-        rx={nzR}
-        ry={nzR * 0.3}
-        fill="#0a0a14"
-      />
-      <Ellipse
-        cx={cx}
-        cy={groundY}
-        rx={nzR * 0.55}
-        ry={nzR * 0.17}
-        fill="#1a1a28"
-      />
+      <Ellipse cx={cx} cy={groundY} rx={nzR} ry={nzR * 0.3} fill="#0a0a14" />
+      <Ellipse cx={cx} cy={groundY} rx={nzR * 0.55} ry={nzR * 0.17} fill="#1a1a28" />
     </G>
   );
 }
@@ -134,11 +125,10 @@ const RULER_W = 44;
 const PAD_B = 42;
 const PAD_T = 22;
 const MAX_M = 135;
-
 const STAR_SEED = [23, 97, 134, 211, 45, 178, 303, 56, 289, 412, 67, 198, 345, 89, 267, 423, 112, 376, 501, 234];
 const RULER_MARKS = [0, 20, 40, 60, 80, 100, 120];
 
-export function RocketVisualization({ rockets, width }: Props) {
+export function RocketVisualization({ rockets, width, highlightedId, onRocketPress }: Props) {
   const W = Math.max(width, 200);
   const H = Math.round(W * 0.72);
   const drawH = H - PAD_B - PAD_T;
@@ -148,6 +138,7 @@ export function RocketVisualization({ rockets, width }: Props) {
   const colW = rockets.length > 0 ? availW / rockets.length : availW;
   const personH = 1.8 * scale;
   const personX = W - 18;
+  const hasHighlight = highlightedId != null;
 
   const stars = STAR_SEED.map((s, i) => ({
     x: (s * 37 + i * 53) % (W - 60) + 45,
@@ -168,166 +159,99 @@ export function RocketVisualization({ rockets, width }: Props) {
         return (
           <G key={m}>
             <Line
-              x1={RULER_W + 2}
-              y1={y}
-              x2={W - 10}
-              y2={y}
-              stroke="rgba(255,255,255,0.05)"
-              strokeWidth={0.5}
-              strokeDasharray="3,6"
+              x1={RULER_W + 2} y1={y} x2={W - 10} y2={y}
+              stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} strokeDasharray="3,6"
             />
             <SvgText
-              x={RULER_W - 5}
-              y={y + 3.5}
-              fontSize={9}
-              fill="rgba(255,255,255,0.3)"
-              textAnchor="end"
-              fontFamily="monospace"
+              x={RULER_W - 5} y={y + 3.5}
+              fontSize={9} fill="rgba(255,255,255,0.3)"
+              textAnchor="end" fontFamily="monospace"
             >
               {m}m
             </SvgText>
             <Line
-              x1={RULER_W - 3}
-              y1={y}
-              x2={RULER_W + 1}
-              y2={y}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth={0.5}
+              x1={RULER_W - 3} y1={y} x2={RULER_W + 1} y2={y}
+              stroke="rgba(255,255,255,0.15)" strokeWidth={0.5}
             />
           </G>
         );
       })}
 
-      <Line
-        x1={RULER_W}
-        y1={PAD_T}
-        x2={RULER_W}
-        y2={groundY}
-        stroke="rgba(255,255,255,0.2)"
-        strokeWidth={0.5}
-      />
-      <Line
-        x1={RULER_W}
-        y1={groundY}
-        x2={W - 10}
-        y2={groundY}
-        stroke="rgba(255,255,255,0.2)"
-        strokeWidth={1}
-      />
+      <Line x1={RULER_W} y1={PAD_T} x2={RULER_W} y2={groundY} stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
+      <Line x1={RULER_W} y1={groundY} x2={W - 10} y2={groundY} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
 
-      <Line
-        x1={personX}
-        y1={groundY}
-        x2={personX}
-        y2={groundY - personH * 0.55}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-      />
-      <Circle
-        cx={personX}
-        cy={groundY - personH * 0.55 - personH * 0.15}
-        r={personH * 0.13}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-        fill="none"
-      />
-      <Line
-        x1={personX - personH * 0.15}
-        y1={groundY - personH * 0.45}
-        x2={personX + personH * 0.15}
-        y2={groundY - personH * 0.45}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-      />
-      <Line
-        x1={personX}
-        y1={groundY - personH * 0.15}
-        x2={personX - personH * 0.1}
-        y2={groundY}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-      />
-      <Line
-        x1={personX}
-        y1={groundY - personH * 0.15}
-        x2={personX + personH * 0.1}
-        y2={groundY}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-      />
-      <SvgText
-        x={personX}
-        y={groundY + 13}
-        fontSize={8}
-        fill="rgba(255,255,255,0.3)"
-        textAnchor="middle"
-        fontFamily="monospace"
-      >
+      {/* Person for scale */}
+      <Line x1={personX} y1={groundY} x2={personX} y2={groundY - personH * 0.55} stroke="rgba(255,255,255,0.4)" strokeWidth={1} />
+      <Circle cx={personX} cy={groundY - personH * 0.55 - personH * 0.15} r={personH * 0.13} stroke="rgba(255,255,255,0.4)" strokeWidth={1} fill="none" />
+      <Line x1={personX - personH * 0.15} y1={groundY - personH * 0.45} x2={personX + personH * 0.15} y2={groundY - personH * 0.45} stroke="rgba(255,255,255,0.4)" strokeWidth={1} />
+      <Line x1={personX} y1={groundY - personH * 0.15} x2={personX - personH * 0.1} y2={groundY} stroke="rgba(255,255,255,0.4)" strokeWidth={1} />
+      <Line x1={personX} y1={groundY - personH * 0.15} x2={personX + personH * 0.1} y2={groundY} stroke="rgba(255,255,255,0.4)" strokeWidth={1} />
+      <SvgText x={personX} y={groundY + 13} fontSize={8} fill="rgba(255,255,255,0.3)" textAnchor="middle" fontFamily="monospace">
         1.8m
       </SvgText>
 
       {rockets.map((r, i) => {
         const cx = RULER_W + colW * i + colW / 2;
+        const colX = RULER_W + colW * i;
         const rH = r.h * scale;
         const baseW = Math.max(22, Math.min(r.d * scale * 2.2, colW * 0.55));
+        const isHighlighted = highlightedId === r.id;
+        const isDimmed = hasHighlight && !isHighlighted;
 
         return (
-          <G key={r.id}>
+          <G key={r.id} opacity={isDimmed ? 0.35 : 1}>
+            {/* Column highlight glow */}
+            {isHighlighted && (
+              <G>
+                <Rect
+                  x={colX + 2} y={PAD_T}
+                  width={colW - 4} height={H - PAD_T}
+                  fill={r.color} fillOpacity={0.1} rx={4}
+                />
+                <Rect
+                  x={colX + 2} y={PAD_T}
+                  width={colW - 4} height={H - PAD_T}
+                  stroke={r.color} strokeOpacity={0.35}
+                  strokeWidth={1} fill="none" rx={4}
+                />
+              </G>
+            )}
+
+            {/* Boosters */}
             {r.boosters && (() => {
               const bH = rH * 0.58;
               const bW = baseW * 0.3;
               const bOff = baseW * 0.62;
-              const boosterColor = darken(r.color, 0.2);
+              const bc = darken(r.color, 0.2);
               return (
                 <G>
-                  <RocketShape
-                    cx={cx - bOff}
-                    groundY={groundY}
-                    rH={bH}
-                    baseW={bW}
-                    color={boosterColor}
-                    addDetail={false}
-                  />
-                  <RocketShape
-                    cx={cx + bOff}
-                    groundY={groundY}
-                    rH={bH}
-                    baseW={bW}
-                    color={boosterColor}
-                    addDetail={false}
-                  />
+                  <RocketShape cx={cx - bOff} groundY={groundY} rH={bH} baseW={bW} color={bc} addDetail={false} />
+                  <RocketShape cx={cx + bOff} groundY={groundY} rH={bH} baseW={bW} color={bc} addDetail={false} />
                 </G>
               );
             })()}
-            <RocketShape
-              cx={cx}
-              groundY={groundY}
-              rH={rH}
-              baseW={baseW}
-              color={r.color}
-              addDetail={true}
-            />
-            <SvgText
-              x={cx}
-              y={groundY + 15}
-              fontSize={10}
-              fill="rgba(255,255,255,0.75)"
-              textAnchor="middle"
-              fontWeight="500"
-              fontFamily="sans-serif"
-            >
+
+            <RocketShape cx={cx} groundY={groundY} rH={rH} baseW={baseW} color={r.color} addDetail={true} />
+
+            {/* Active indicator dot */}
+            {isHighlighted && (
+              <Circle cx={cx} cy={groundY - rH - 10} r={3} fill={r.color} />
+            )}
+
+            <SvgText x={cx} y={groundY + 15} fontSize={10} fill="rgba(255,255,255,0.75)" textAnchor="middle" fontWeight="500" fontFamily="sans-serif">
               {r.name}
             </SvgText>
-            <SvgText
-              x={cx}
-              y={groundY + 28}
-              fontSize={9}
-              fill="rgba(255,255,255,0.35)"
-              textAnchor="middle"
-              fontFamily="monospace"
-            >
+            <SvgText x={cx} y={groundY + 28} fontSize={9} fill="rgba(255,255,255,0.35)" textAnchor="middle" fontFamily="monospace">
               {r.h}m
             </SvgText>
+
+            {/* Invisible touch target over the whole column */}
+            <Rect
+              x={colX} y={PAD_T}
+              width={colW} height={H - PAD_T}
+              fill="transparent"
+              onPress={() => onRocketPress?.(r.id)}
+            />
           </G>
         );
       })}
