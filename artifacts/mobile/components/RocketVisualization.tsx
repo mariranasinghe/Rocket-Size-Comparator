@@ -122,11 +122,21 @@ function RocketShape({ cx, groundY, rH, baseW, color, addDetail }: ShapeProps) {
 }
 
 const RULER_W = 44;
-const PAD_B = 42;
+const PAD_B = 46;
 const PAD_T = 22;
 const MAX_M = 135;
 const STAR_SEED = [23, 97, 134, 211, 45, 178, 303, 56, 289, 412, 67, 198, 345, 89, 267, 423, 112, 376, 501, 234];
 const RULER_MARKS = [0, 20, 40, 60, 80, 100, 120];
+
+const SHORT_NAMES: Record<string, string> = {
+  starship: "Starship",
+  saturnv: "Saturn V",
+  newglenn: "N.Glenn",
+  falconhvy: "F.Heavy",
+  falcon9: "Falcon 9",
+  ariane5: "Ariane 5",
+  soyuz: "Soyuz-2",
+};
 
 export function RocketVisualization({ rockets, width, highlightedId, onRocketPress }: Props) {
   const W = Math.max(width, 200);
@@ -164,7 +174,7 @@ export function RocketVisualization({ rockets, width, highlightedId, onRocketPre
             />
             <SvgText
               x={RULER_W - 5} y={y + 3.5}
-              fontSize={9} fill="rgba(255,255,255,0.3)"
+              fontSize={9} fill="rgba(255,255,255,0.5)"
               textAnchor="end" fontFamily="monospace"
             >
               {m}m
@@ -238,12 +248,38 @@ export function RocketVisualization({ rockets, width, highlightedId, onRocketPre
               <Circle cx={cx} cy={groundY - rH - 10} r={3} fill={r.color} />
             )}
 
-            <SvgText x={cx} y={groundY + 15} fontSize={10} fill="rgba(255,255,255,0.75)" textAnchor="middle" fontWeight="500" fontFamily="sans-serif">
-              {r.name}
-            </SvgText>
-            <SvgText x={cx} y={groundY + 28} fontSize={9} fill="rgba(255,255,255,0.35)" textAnchor="middle" fontFamily="monospace">
-              {r.h}m
-            </SvgText>
+            {(() => {
+              const labelFs = colW >= 72 ? 10 : colW >= 55 ? 9 : colW >= 42 ? 8 : 7;
+              const heightFs = colW >= 55 ? 9 : 7;
+              const label = colW < 75
+                ? (SHORT_NAMES[r.id] ?? r.name.split(" ")[0])
+                : r.name;
+              const nameY = groundY + labelFs + 5;
+              const heightY = nameY + heightFs + 2;
+              return (
+                <G>
+                  <SvgText
+                    x={cx} y={nameY}
+                    fontSize={labelFs}
+                    fill="rgba(255,255,255,0.82)"
+                    textAnchor="middle"
+                    fontWeight="500"
+                    fontFamily="sans-serif"
+                  >
+                    {label}
+                  </SvgText>
+                  <SvgText
+                    x={cx} y={heightY}
+                    fontSize={heightFs}
+                    fill="rgba(255,255,255,0.38)"
+                    textAnchor="middle"
+                    fontFamily="monospace"
+                  >
+                    {r.h}m
+                  </SvgText>
+                </G>
+              );
+            })()}
 
             {/* Invisible touch target over the whole column */}
             <Rect
